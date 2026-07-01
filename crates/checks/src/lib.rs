@@ -16,9 +16,9 @@ pub mod std_imports;
 pub mod storage;
 pub mod transfer;
 pub mod ttl;
+mod util;
 pub mod xc_input;
 pub mod zero_address;
-mod util;
 
 pub use admin::UnprotectedAdminCheck;
 pub use annotations::MissingContractAnnotationCheck;
