@@ -1,6 +1,6 @@
 # Checks reference
 
-This document describes what each Soroban Guard Core check looks for and why it matters.
+This document describes what each SDG-CLI check looks for and why it matters.
 
 ---
 
