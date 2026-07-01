@@ -38,7 +38,7 @@ Soroban contracts are Rust crates compiled to WASM and deployed to the Stellar n
 cargo build --release
 ```
 
-The binary is `target/release/soroban-guard` (package `soroban-guard-cli`).
+The binary is `target/release/sdg` (package `sdg-cli`).
 
 ---
 
