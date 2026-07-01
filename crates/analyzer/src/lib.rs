@@ -1,10 +1,10 @@
 //! Walk Rust sources, parse with `syn`, and run all registered checks.
 //!
-//! Each [`Check`](soroban_guard_checks::Check) runs independently on the same parsed file;
+//! Each [`Check`](sdg_checks::Check) runs independently on the same parsed file;
 //! findings are concatenated with **no shared mutable state** between checks.
 
 use rayon::prelude::*;
-use soroban_guard_checks::{default_checks, Finding};
+use sdg_checks::{default_checks, Finding};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 use walkdir::WalkDir;
@@ -113,7 +113,7 @@ mod tests {
     #[test]
     fn reports_scanned_rust_file_count_after_filters() {
         let root = std::env::temp_dir().join(format!(
-            "soroban-guard-analyzer-{}-{}",
+            "sdg-analyzer-{}-{}",
             std::process::id(),
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
