@@ -1,9 +1,9 @@
 [package]
-name = "soroban-guard-checks"
+name = "sdg-checks"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Vulnerability detectors for Soroban Guard"
+description = "Vulnerability detectors for SDG-CLI"
 
 [dependencies]
 syn.workspace = true
