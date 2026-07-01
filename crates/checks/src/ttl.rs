@@ -59,7 +59,9 @@ impl Check for MissingTtlExtensionCheck {
 
 fn receiver_chain_contains_storage(expr: &Expr) -> bool {
     match expr {
-        Expr::MethodCall(m) => m.method == "storage" || receiver_chain_contains_storage(&m.receiver),
+        Expr::MethodCall(m) => {
+            m.method == "storage" || receiver_chain_contains_storage(&m.receiver)
+        }
         Expr::Field(f) => receiver_chain_contains_storage(&f.base),
         _ => false,
     }
