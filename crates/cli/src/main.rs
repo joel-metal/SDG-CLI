@@ -1,0 +1,393 @@
+use clap::{Parser, Subcommand};
+use colored::Colorize;
+use soroban_guard_analyzer::scan_directory;
+use soroban_guard_checks::{default_checks, Finding, Severity};
+use std::fs;
+use std::path::{Path, PathBuf};
+
+#[derive(Parser)]
+#[command(name = "soroban-guard")]
+#[command(
+    about = "Soroban Guard Core — static analyzer for Soroban smart contracts",
+    version
+)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Scan a directory tree for vulnerability patterns
+    Scan {
+        /// Path to the contract crate or folder containing Rust sources
+        path: PathBuf,
+        /// Print findings as JSON (`{ "findings": [...] }`)
+        #[arg(long)]
+        json: bool,
+        /// Emit SARIF 2.1.0 for GitHub Code Scanning
+        #[arg(long, conflicts_with = "json")]
+        sarif: bool,
+        /// Write output to a file instead of stdout (defaults to JSON when no format flag is set)
+        #[arg(long)]
+        output: Option<PathBuf>,
+        /// Suppress all output when there are zero High findings
+        #[arg(long)]
+        quiet: bool,
+    },
+    /// List the checks that are enabled by default
+    ListChecks,
+}
+
+fn main() {
+    let cli = Cli::parse();
+    match cli.command {
+        Commands::Scan {
+            path,
+            json,
+            sarif,
+            output,
+            quiet,
+        } => match scan_directory(&path, &[]) {
+            Ok((findings, files_scanned)) => {
+                let any_high = findings
+                    .iter()
+                    .any(|f| matches!(f.severity, Severity::High));
+
+                if !quiet || any_high {
+                    // Format precedence: sarif > json. `--output` without a format flag
+                    // still produces a machine-readable (JSON) file artifact.
+                    let payload = if sarif {
+                        Some(sarif_payload(&findings))
+                    } else if json || output.is_some() {
+                        Some(json_payload(&findings))
+                    } else {
+                        None
+                    };
+
+                    match payload {
+                        Some(Ok(text)) => {
+                            if let Err(e) = deliver(&text, &output) {
+                                eprintln!("{} {}", "error:".red().bold(), e);
+                                std::process::exit(2);
+                            }
+                        }
+                        Some(Err(e)) => {
+                            eprintln!("{} {}", "error:".red().bold(), e);
+                            std::process::exit(2);
+                        }
+                        None => print_pretty(&findings, files_scanned, path.display().to_string()),
+                    }
+                }
+
+                if any_high {
+                    std::process::exit(1);
+                }
+            }
+            Err(e) => {
+                if json || sarif {
+                    let envelope = serde_json::json!({ "error": e.to_string() });
+                    println!("{}", serde_json::to_string_pretty(&envelope).unwrap());
+                } else {
+                    eprintln!("{} {}", "error:".red().bold(), e);
+                }
+                std::process::exit(2);
+            }
+        },
+        Commands::ListChecks => {
+            for check in default_checks() {
+                let (severity, description) = describe_check(check.name());
+                println!("{} | {} | {}", check.name(), severity, description);
+            }
+        }
+    }
+}
+
+fn build_sarif(findings: &[Finding]) -> serde_json::Value {
+    let mut rules = Vec::new();
+    let mut seen = std::collections::BTreeSet::new();
+    for finding in findings {
+        if seen.insert(finding.check_name.clone()) {
+            rules.push(serde_json::json!({
+                "id": finding.check_name,
+                "shortDescription": { "text": describe_rule(&finding.check_name) },
+                "fullDescription": { "text": describe_rule(&finding.check_name) },
+                "defaultConfiguration": { "level": severity_to_sarif_level(finding.severity) },
+                "helpUri": "https://github.com/chindosunday/SDG-CLI"
+            }));
+        }
+    }
+    let results = findings
+        .iter()
+        .map(|finding| {
+            serde_json::json!({
+                "ruleId": finding.check_name,
+                "level": severity_to_sarif_level(finding.severity),
+                "message": { "text": finding.description },
+                "locations": [{
+                    "physicalLocation": {
+                        "artifactLocation": { "uri": finding.file_path },
+                        "region": { "startLine": finding.line }
+                    }
+                }]
+            })
+        })
+        .collect::<Vec<_>>();
+
+    serde_json::json!({
+        "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [{
+            "tool": {
+                "driver": {
+                    "name": "soroban-guard",
+                    "informationUri": "https://github.com/chindosunday/SDG-CLI",
+                    "rules": rules
+                }
+            },
+            "results": results
+        }]
+    })
+}
+
+fn severity_to_sarif_level(severity: Severity) -> &'static str {
+    match severity {
+        Severity::High => "error",
+        Severity::Medium => "warning",
+        Severity::Low => "note",
+    }
+}
+
+fn describe_rule(name: &str) -> &'static str {
+    match name {
+        "missing-require-auth" => "Method writes to storage without env.require_auth()",
+        "unchecked-arithmetic" => "Wrapping arithmetic operations may overflow",
+        "unprotected-admin" => "Sensitive admin entrypoints lack an authorization gate",
+        "unsafe-storage-patterns" => "Temporary storage or dynamic Symbol keys are risky",
+        _ => "Custom check",
+    }
+}
+
+fn describe_check(name: &str) -> (&'static str, &'static str) {
+    match name {
+        "missing-require-auth" => ("high", "Missing env.require_auth() before storage writes"),
+        "unchecked-arithmetic" => (
+            "high",
+            "Unchecked +, -, * on contract state (severity varies by operand)",
+        ),
+        "unprotected-admin" => ("high", "Privileged entrypoints without an auth gate"),
+        "unsafe-storage-patterns" => ("medium", "Temporary storage and dynamic Symbol keys"),
+        "missing-ttl-extension" => ("low", "Persistent storage write without extend_ttl"),
+        "forbidden-std-imports" => ("high", "std imports forbidden in no_std contracts"),
+        "hardcoded-address" => ("medium", "Hardcoded Stellar address literals in source"),
+        "unsafe-cross-contract-input" => (
+            "high",
+            "Cross-contract return value written to storage unvalidated",
+        ),
+        "missing-contract-annotation" => {
+            ("low", "Contract types missing #[contract]/#[contractimpl]")
+        }
+        "delegate-call-risk" => (
+            "medium",
+            "Storage-driven invoke_contract target may be attacker-controlled",
+        ),
+        "integer-division-truncation" => ("medium", "Integer division may silently truncate"),
+        "missing-event-emission" => ("medium", "Storage write without emitting an event"),
+        "symbol-key-collision" => ("medium", "Duplicate symbol storage keys"),
+        "self-transfer" => ("low", "Transfer-like method without a from == to guard"),
+        "missing-zero-address-check" => {
+            ("medium", "Sensitive Address param without a zero-address guard")
+        }
+        "mutable-global-state" => ("high", "static mut global state in contract source"),
+        "panic-in-contract" => ("medium", "panic!/unwrap()/expect() inside contract methods"),
+        "reentrancy-risk" => ("high", "invoke_contract after a storage write without a re-read"),
+        _ => ("low", "Custom detector"),
+    }
+}
+
+fn write_output(path: &Path, payload: &str) -> Result<(), std::io::Error> {
+    fs::write(path, payload)
+}
+
+/// Send a rendered payload to a file when `--output` is set, otherwise to stdout.
+fn deliver(payload: &str, output: &Option<PathBuf>) -> Result<(), std::io::Error> {
+    match output {
+        Some(path) => write_output(path, payload),
+        None => {
+            println!("{payload}");
+            Ok(())
+        }
+    }
+}
+
+fn json_payload(findings: &[Finding]) -> Result<String, serde_json::Error> {
+    #[derive(serde::Serialize)]
+    struct Out<'a> {
+        findings: &'a [Finding],
+    }
+
+    serde_json::to_string_pretty(&Out { findings })
+}
+
+fn sarif_payload(findings: &[Finding]) -> Result<String, serde_json::Error> {
+    serde_json::to_string_pretty(&build_sarif(findings))
+}
+
+fn summary_text(findings: &[Finding], files_scanned: usize) -> String {
+    let high = findings
+        .iter()
+        .filter(|f| matches!(f.severity, Severity::High))
+        .count();
+    let medium = findings
+        .iter()
+        .filter(|f| matches!(f.severity, Severity::Medium))
+        .count();
+    let low = findings
+        .iter()
+        .filter(|f| matches!(f.severity, Severity::Low))
+        .count();
+    format!("{high} High, {medium} Medium, {low} Low — across {files_scanned} file(s)")
+}
+
+fn print_pretty(findings: &[Finding], files_scanned: usize, root_label: String) {
+    println!();
+    println!(
+        "{} {}",
+        "Soroban Guard Core".cyan().bold(),
+        format!("(scan: {})", root_label).dimmed()
+    );
+    println!();
+
+    if findings.is_empty() {
+        println!("  {}", "No issues found.".green());
+        println!();
+    } else {
+        println!(
+            "  {} finding(s):\n",
+            findings.len().to_string().yellow().bold()
+        );
+
+        for (i, f) in findings.iter().enumerate() {
+            let sev = match f.severity {
+                Severity::High => "HIGH".red().bold(),
+                Severity::Medium => "MEDIUM".magenta().bold(), // #46 bold magenta
+                Severity::Low => "LOW".white(),
+            };
+            println!(
+                "  {}  {}  {}  {}",
+                format!("[{}]", i + 1).dimmed(),
+                sev,
+                format!("{}:{}", f.file_path, f.line).bright_white(),
+                f.check_name.cyan()
+            );
+            println!("         {} `{}`", "function:".dimmed(), f.function_name);
+            println!("         {}", f.description);
+            if let Some(suggestion) = &f.suggestion {
+                println!("         {} {}", "suggestion:".dimmed(), suggestion);
+            }
+            println!();
+        }
+    }
+
+    println!("  {}", summary_text(findings, files_scanned));
+    println!();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn sarif_payload_has_expected_schema_and_result() {
+        let findings = vec![Finding {
+            check_name: "missing-require-auth".to_string(),
+            severity: Severity::High,
+            file_path: "src/lib.rs".to_string(),
+            line: 10,
+            function_name: "set_balance".to_string(),
+            description: "Missing auth".to_string(),
+            rule_url: None,
+            suggestion: None,
+        }];
+
+        let payload = build_sarif(&findings);
+        assert_eq!(payload["version"], "2.1.0");
+        assert_eq!(
+            payload["runs"][0]["tool"]["driver"]["name"],
+            "soroban-guard"
+        );
+        assert_eq!(
+            payload["runs"][0]["results"][0]["ruleId"],
+            "missing-require-auth"
+        );
+    }
+
+    #[test]
+    fn json_payload_includes_rule_url() {
+        let rule_url =
+            "https://github.com/joel-metal/SDG-CLI/blob/main/docs/checks.md#missing-require-auth-high";
+        let findings = vec![Finding {
+            check_name: "missing-require-auth".to_string(),
+            severity: Severity::High,
+            file_path: "src/lib.rs".to_string(),
+            line: 10,
+            function_name: "set_balance".to_string(),
+            description: "Missing auth".to_string(),
+            rule_url: Some(rule_url.to_string()),
+            suggestion: None,
+        }];
+
+        let payload: serde_json::Value =
+            serde_json::from_str(&json_payload(&findings).unwrap()).unwrap();
+        assert_eq!(payload["findings"][0]["rule_url"], rule_url);
+    }
+
+    #[test]
+    fn writes_payload_to_file() {
+        let path = std::env::temp_dir().join(format!(
+            "soroban-guard-test-{}-{}.json",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        write_output(&path, "{\"ok\":true}").unwrap();
+        assert!(path.exists());
+        let contents = fs::read_to_string(&path).unwrap();
+        assert!(contents.contains("ok"));
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn summary_includes_severity_counts_and_files_scanned() {
+        let findings = vec![
+            Finding {
+                check_name: "high-check".to_string(),
+                severity: Severity::High,
+                file_path: "src/lib.rs".to_string(),
+                line: 1,
+                function_name: "high".to_string(),
+                description: "High finding".to_string(),
+                rule_url: None,
+                suggestion: None,
+            },
+            Finding {
+                check_name: "medium-check".to_string(),
+                severity: Severity::Medium,
+                file_path: "src/lib.rs".to_string(),
+                line: 2,
+                function_name: "medium".to_string(),
+                description: "Medium finding".to_string(),
+                rule_url: None,
+                suggestion: None,
+            },
+        ];
+
+        assert_eq!(
+            summary_text(&findings, 6),
+            "1 High, 1 Medium, 0 Low — across 6 file(s)"
+        );
+    }
+}
