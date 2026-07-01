@@ -1,8 +1,8 @@
-# Guard CLI
+# SDG-CLI
 
 > Static analysis engine for [Soroban](https://soroban.stellar.org/) smart contracts — securing the Stellar blockchain, one contract at a time.
 
-Guard CLI is a CLI-based static analyzer for Rust smart contracts deployed on the **Stellar network** via the Soroban smart contract platform. It detects vulnerabilities before your code ever touches the chain.
+SDG-CLI is a CLI-based static analyzer for Rust smart contracts deployed on the **Stellar network** via the Soroban smart contract platform. It detects vulnerabilities before your code ever touches the chain.
 
 ---
 
@@ -205,12 +205,12 @@ pub fn default_checks() -> Vec<Box<dyn Check + Send + Sync>> {
 
 ## Stellar Integration
 
-Guard CLI is designed to sit at the gate of your Stellar deployment pipeline. Soroban contracts are compiled to WASM and deployed to the Stellar network — Guard CLI catches vulnerabilities at the source level before any of that happens.
+SDG-CLI is designed to sit at the gate of your Stellar deployment pipeline. Soroban contracts are compiled to WASM and deployed to the Stellar network — SDG-CLI catches vulnerabilities at the source level before any of that happens.
 
 ### How it fits in
 
 ```
-[Source code] → Guard CLI scan → [WASM build] → [Stellar deploy]
+[Source code] → SDG-CLI scan → [WASM build] → [Stellar deploy]
 ```
 
 - Runs purely on Rust source — no Stellar SDK, no network connection, no wallet required.
@@ -244,7 +244,7 @@ stellar contract deploy \
 ### CI example (GitHub Actions)
 
 ```yaml
-- name: Guard CLI scan
+- name: SDG-CLI scan
   run: cargo run -p soroban-guard-cli -- scan ./my-contract --sarif --output findings.sarif
   # exits 1 on High findings — blocks the workflow
 
