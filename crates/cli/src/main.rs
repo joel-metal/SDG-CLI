@@ -140,8 +140,8 @@ fn build_sarif(findings: &[Finding]) -> serde_json::Value {
         "runs": [{
             "tool": {
                 "driver": {
-                    "name": "soroban-guard",
-                    "informationUri": "https://github.com/chindosunday/SDG-CLI",
+                    "name": "sdg",
+                    "informationUri": "https://github.com/joel-metal/SDG-CLI",
                     "rules": rules
                 }
             },
