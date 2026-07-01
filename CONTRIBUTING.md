@@ -32,8 +32,8 @@ scan data flow, and core types.
 4. **Run the CLI** against bundled fixtures:
 
    ```bash
-   cargo run -p soroban-guard-cli -- scan test-contracts/vulnerable
-   cargo run -p soroban-guard-cli -- scan test-contracts/safe --json
+   cargo run -p sdg-cli -- scan test-contracts/vulnerable
+   cargo run -p sdg-cli -- scan test-contracts/safe --json
    ```
 
 5. **Standalone Soroban crates** — Paths under `test-contracts/` are listed in `[workspace.exclude]`. To type-check a fixture on its own:
