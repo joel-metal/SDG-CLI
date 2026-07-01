@@ -1,14 +1,14 @@
 use clap::{Parser, Subcommand};
 use colored::Colorize;
-use soroban_guard_analyzer::scan_directory;
-use soroban_guard_checks::{default_checks, Finding, Severity};
+use sdg_analyzer::scan_directory;
+use sdg_checks::{default_checks, Finding, Severity};
 use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
-#[command(name = "soroban-guard")]
+#[command(name = "sdg")]
 #[command(
-    about = "Soroban Guard Core — static analyzer for Soroban smart contracts",
+    about = "SDG-CLI — static analyzer for Soroban smart contracts",
     version
 )]
 struct Cli {
