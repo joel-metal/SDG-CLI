@@ -21,7 +21,6 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          rustup-channel: stable
           toolchain: stable
 
       - name: Cache Cargo registry
@@ -58,4 +57,12 @@ jobs:
         run: cargo test --doc --workspace --verbose
 
       - name: Example SARIF export
-        run: cargo run -p sdg-cli -- scan test-contracts/vulnerable --sarif --output /tmp/findings.sarif
+        run: |
+          # The vulnerable fixture intentionally contains High findings, so the
+          # scanner exits 1 by design. Accept exit 0/1; fail only on 2 (scan error).
+          cargo run -p sdg-cli -- scan test-contracts/vulnerable --sarif --output /tmp/findings.sarif || status=$?
+          if [ "${status:-0}" -gt 1 ]; then
+            echo "scan failed with exit code ${status}"
+            exit "${status}"
+          fi
+          test -s /tmp/findings.sarif && echo "SARIF written to /tmp/findings.sarif"
