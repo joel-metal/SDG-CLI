@@ -1,17 +1,17 @@
 [package]
-name = "soroban-guard-cli"
+name = "sdg-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "CLI for Soroban Guard smart contract scanner"
+description = "CLI for SDG-CLI smart contract scanner"
 
 [[bin]]
-name = "soroban-guard"
+name = "sdg"
 path = "src/main.rs"
 
 [dependencies]
-soroban-guard-analyzer = { path = "../analyzer" }
-soroban-guard-checks = { path = "../checks" }
+sdg-analyzer = { path = "../analyzer" }
+sdg-checks = { path = "../checks" }
 clap.workspace = true
 colored.workspace = true
 serde = { workspace = true, features = ["derive"] }
