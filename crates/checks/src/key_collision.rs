@@ -1,4 +1,3 @@
-
 //! Detection of duplicate symbol keys (symbol_short!("...")) within the same impl block.
 
 use crate::{Check, Finding, Severity};
