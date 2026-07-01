@@ -47,37 +47,37 @@ The binary is `target/release/sdg` (package `sdg-cli`).
 Scan a Soroban contract crate before deploying to Stellar:
 
 ```bash
-cargo run -p soroban-guard-cli -- scan ./path/to/contract-crate
+cargo run -p sdg-cli -- scan ./path/to/contract-crate
 ```
 
 Output as JSON (useful for CI pipelines or the web dashboard):
 
 ```bash
-cargo run -p soroban-guard-cli -- scan ./path/to/contract-crate --json
+cargo run -p sdg-cli -- scan ./path/to/contract-crate --json
 ```
 
 Write JSON to a file instead of stdout:
 
 ```bash
-cargo run -p soroban-guard-cli -- scan ./path/to/contract-crate --json --output findings.json
+cargo run -p sdg-cli -- scan ./path/to/contract-crate --json --output findings.json
 ```
 
 Emit SARIF 2.1.0 for GitHub Code Scanning:
 
 ```bash
-cargo run -p soroban-guard-cli -- scan ./path/to/contract-crate --sarif > findings.sarif
+cargo run -p sdg-cli -- scan ./path/to/contract-crate --sarif > findings.sarif
 ```
 
 List the checks that run by default:
 
 ```bash
-cargo run -p soroban-guard-cli -- list-checks
+cargo run -p sdg-cli -- list-checks
 ```
 
 For plain terminal output, disable ANSI colors with:
 
 ```bash
-NO_COLOR=1 soroban-guard scan ./path/to/contract-crate
+NO_COLOR=1 sdg scan ./path/to/contract-crate
 ```
 
 ### Exit codes
@@ -223,7 +223,7 @@ SDG-CLI is designed to sit at the gate of your Stellar deployment pipeline. Soro
 
 ```bash
 # 1. Scan before building — fails fast on High findings (exit 1)
-cargo run -p soroban-guard-cli -- scan ./my-contract --json > findings.json
+cargo run -p sdg-cli -- scan ./my-contract --json > findings.json
 
 # 2. Build the WASM artifact only if scan passed
 cargo build --target wasm32-unknown-unknown --release
@@ -245,7 +245,7 @@ stellar contract deploy \
 
 ```yaml
 - name: SDG-CLI scan
-  run: cargo run -p soroban-guard-cli -- scan ./my-contract --sarif --output findings.sarif
+  run: cargo run -p sdg-cli -- scan ./my-contract --sarif --output findings.sarif
   # exits 1 on High findings — blocks the workflow
 
 - name: Build WASM
