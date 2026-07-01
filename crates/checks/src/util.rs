@@ -61,10 +61,8 @@ fn collect_contractimpl_fns<'a>(
     for item in items {
         match item {
             Item::Mod(m) => {
-                let is_test = in_test_mod
-                    || is_cfg_test(&m.attrs)
-                    || m.ident == "tests"
-                    || m.ident == "test";
+                let is_test =
+                    in_test_mod || is_cfg_test(&m.attrs) || m.ident == "tests" || m.ident == "test";
                 if let Some((_, nested)) = &m.content {
                     collect_contractimpl_fns(nested, is_test, out);
                 }
