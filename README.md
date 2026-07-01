@@ -6,11 +6,11 @@ SDG-CLI is a CLI-based static analyzer for Rust smart contracts deployed on the 
 
 ---
 
-## Why Soroban Guard?
+## Why SDG-CLI?
 
 Soroban is Stellar's smart contract platform — a WebAssembly-based execution environment designed for speed, low cost, and predictability. But like any smart contract platform, **bugs in Soroban contracts can be exploited on-chain and are irreversible**.
 
-Soroban Guard catches common vulnerability classes at the source level, before `stellar contract deploy` ever runs.
+SDG-CLI catches common vulnerability classes at the source level, before `stellar contract deploy` ever runs.
 
 ---
 
