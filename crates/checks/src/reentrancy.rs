@@ -97,10 +97,12 @@ impl<'ast> Visit<'ast> for ReentrancyVisitor {
             self.re_read_after_write = false;
         } else if self.wrote && is_storage_read(i) {
             self.re_read_after_write = true;
-        } else if self.wrote && !self.re_read_after_write && is_invoke_contract(i) {
-            if self.invoke_after_write_line.is_none() {
-                self.invoke_after_write_line = Some(i.span().start().line);
-            }
+        } else if self.wrote
+            && !self.re_read_after_write
+            && is_invoke_contract(i)
+            && self.invoke_after_write_line.is_none()
+        {
+            self.invoke_after_write_line = Some(i.span().start().line);
         }
         visit::visit_expr_method_call(self, i);
     }
