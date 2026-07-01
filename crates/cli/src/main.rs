@@ -195,12 +195,16 @@ fn describe_check(name: &str) -> (&'static str, &'static str) {
         "missing-event-emission" => ("medium", "Storage write without emitting an event"),
         "symbol-key-collision" => ("medium", "Duplicate symbol storage keys"),
         "self-transfer" => ("low", "Transfer-like method without a from == to guard"),
-        "missing-zero-address-check" => {
-            ("medium", "Sensitive Address param without a zero-address guard")
-        }
+        "missing-zero-address-check" => (
+            "medium",
+            "Sensitive Address param without a zero-address guard",
+        ),
         "mutable-global-state" => ("high", "static mut global state in contract source"),
         "panic-in-contract" => ("medium", "panic!/unwrap()/expect() inside contract methods"),
-        "reentrancy-risk" => ("high", "invoke_contract after a storage write without a re-read"),
+        "reentrancy-risk" => (
+            "high",
+            "invoke_contract after a storage write without a re-read",
+        ),
         _ => ("low", "Custom detector"),
     }
 }
@@ -253,7 +257,7 @@ fn print_pretty(findings: &[Finding], files_scanned: usize, root_label: String) 
     println!();
     println!(
         "{} {}",
-        "Soroban Guard Core".cyan().bold(),
+        "SDG-CLI".cyan().bold(),
         format!("(scan: {})", root_label).dimmed()
     );
     println!();
@@ -313,10 +317,7 @@ mod tests {
 
         let payload = build_sarif(&findings);
         assert_eq!(payload["version"], "2.1.0");
-        assert_eq!(
-            payload["runs"][0]["tool"]["driver"]["name"],
-            "soroban-guard"
-        );
+        assert_eq!(payload["runs"][0]["tool"]["driver"]["name"], "sdg");
         assert_eq!(
             payload["runs"][0]["results"][0]["ruleId"],
             "missing-require-auth"
@@ -346,7 +347,7 @@ mod tests {
     #[test]
     fn writes_payload_to_file() {
         let path = std::env::temp_dir().join(format!(
-            "soroban-guard-test-{}-{}.json",
+            "sdg-test-{}-{}.json",
             std::process::id(),
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
