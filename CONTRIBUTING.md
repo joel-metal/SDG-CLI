@@ -42,7 +42,7 @@ scan data flow, and core types.
    cd test-contracts/arithmetic-safe && cargo check
    ```
 
-6. **Install the `soroban-guard` binary** (optional):
+6. **Install the `sdg` binary** (optional):
 
    ```bash
    cargo install --path crates/cli
@@ -161,7 +161,7 @@ Fixture crates live under **`test-contracts/`** and are **excluded** from the ro
 
 4. **Naming** — Use `*-vulnerable` / `*-safe` pairs for clarity in docs and CI.
 
-5. **Scanning** — `soroban-guard scan test-contracts/my-rule-vulnerable` only reads `.rs` files; building first is optional.
+5. **Scanning** — `sdg scan test-contracts/my-rule-vulnerable` only reads `.rs` files; building first is optional.
 
 ---
 
