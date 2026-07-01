@@ -104,9 +104,13 @@ impl<'ast> Visit<'ast> for GuardScan {
             let from_keys = ["from", "sender", "source", "spender"];
             let to_keys = ["to", "recipient", "dest", "destination"];
 
-            let left_is_from = left_idents.iter().any(|id| from_keys.contains(&id.as_str()));
+            let left_is_from = left_idents
+                .iter()
+                .any(|id| from_keys.contains(&id.as_str()));
             let left_is_to = left_idents.iter().any(|id| to_keys.contains(&id.as_str()));
-            let right_is_from = right_idents.iter().any(|id| from_keys.contains(&id.as_str()));
+            let right_is_from = right_idents
+                .iter()
+                .any(|id| from_keys.contains(&id.as_str()));
             let right_is_to = right_idents.iter().any(|id| to_keys.contains(&id.as_str()));
 
             if (left_is_from && right_is_to) || (left_is_to && right_is_from) {
