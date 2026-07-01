@@ -1,4 +1,4 @@
-use soroban_guard_analyzer::scan_directory;
+use sdg_analyzer::scan_directory;
 use std::path::PathBuf;
 
 fn fixture_path(name: &str) -> PathBuf {
